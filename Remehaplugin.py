@@ -1,5 +1,5 @@
 """
-<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring" version="1.0.0">
+<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring" version=0.0.1">
     <params>
         <param field="Mode1" label="Email" width="200px" required="true"/>
         <param field="Mode2" label="Password" width="200px" password="true" required="true"/>
