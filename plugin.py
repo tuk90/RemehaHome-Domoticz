@@ -1,5 +1,5 @@
 """
-<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring" version="0.0.1">
+<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring" version="0.0.2">
     <params>
         <param field="Mode1" label="Email" width="200px" required="true"/>
         <param field="Mode2" label="Password" width="200px" password="true" required="true"/>
@@ -57,28 +57,21 @@ class RemehaHomeAPI:
         # Declare Devices variable
         global Devices
 
-        # Example: Create a normal temperature device
         device_name_1 ="roomTemperature"  # Adjust the device name as needed
         device_id_1 = 1  # Adjust the device ID as needed
-
-        # Create the device as a normal temperature device
         Domoticz.Device(Name=device_name_1, Unit=device_id_1, TypeName="Temperature", Used=1).Create()
 
-        # Example: Create a normal temperature device
-        device_name_2 = "outdoorTemperature"  # Adjust the device name as needed
-        device_id_2 = 2  # Adjust the device ID as needed
-
-        # Create the device as a normal temperature device
+        device_name_2 = "outdoorTemperature" 
+        device_id_2 = 2
         Domoticz.Device(Name=device_name_2, Unit=device_id_2, TypeName="Temperature", Used=1).Create()
         
-        # Example: Create a normal temperature device
-        device_name_3 = "waterPressure"  # Adjust the device name as needed
-        device_id_3 = 3  # Adjust the device ID as needed
-
-        # Create the device as a normal temperature device
+        device_name_3 = "waterPressure" 
+        device_id_3 = 3 
         Domoticz.Device(Name=device_name_3, Unit=device_id_3, TypeName="Pressure", Used=1).Create()
 
-        
+        device_name_4 = "setPoint"
+        device_id_4 = 4 
+        Domoticz.Device(Name=device_name_4, Unit=device_id_4, TypeName="Setpoint", Used=1).Create()
 
     async def async_resolve_external_data(self, email, password):
         random_state = secrets.token_urlsafe()
@@ -208,20 +201,29 @@ class RemehaHomeAPI:
                 response.raise_for_status()
 
                 response_json = await response.json()
+                #Domoticz.Log(response_json)
 
                 # Update Domoticz devices here based on the response_json
                 valueRoomtemperature = response_json["appliances"][0]["climateZones"][0]["roomTemperature"]
                 valueOutdoorTemperature = response_json["appliances"][0]["outdoorTemperature"]
+                if valueOutdoorTemperature is None:
+                        # No real outdoor temperature device, using cloud value
+                        valueOutdoorTemperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["cloudOutdoorTemperature"]
                 valueWaterPressure = response_json["appliances"][0]["waterPressure"]
+                valueSetpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
+
+                # other usefull fields
+                # firePlaceModeActive
+
                 
-                # Example: Update Domoticz devices
                 if str(Devices[1].sValue) != str(valueRoomtemperature):
                     Devices[1].Update(nValue=0, sValue=str(valueRoomtemperature))
                 if str(Devices[2].sValue) != str(valueOutdoorTemperature):
                     Devices[2].Update(nValue=0, sValue=str(valueOutdoorTemperature))
                 if str(Devices[3].sValue) != str(valueWaterPressure):
                     Devices[3].Update(nValue=0, sValue=str(valueWaterPressure))
-                
+                if str(Devices[4].sValue) != str(valueSetpoint):
+                    Devices[4].Update(nValue=0, sValue=str(valueSetpoint))
 
         except Exception as e:
             Domoticz.Error(f"Error making GET request: {e}")
