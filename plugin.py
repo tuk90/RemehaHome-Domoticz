@@ -30,7 +30,7 @@ class RemehaHomeAPI:
         self.readOptions()
 
         # Check if there are no existing devices
-        if len(Devices) == 0:
+        if len(Devices) != 4:
             # Example: Create two normal Switch devices for controlling two bed sides
             self.createDevices()
         else:
