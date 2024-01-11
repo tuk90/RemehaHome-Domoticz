@@ -3,6 +3,8 @@
 ## Description
 This Domoticz Python plugin allows you to integrate Remeha Home devices into your Domoticz home automation system.
 
+The plugin.py is the domoticz plugin and the Remehatest.py can be used to test stuff with the Remeha API.
+
 ## Installation
 
 1. Download the plugin files to your Domoticz plugins directory.
