@@ -160,7 +160,10 @@ async def main(email, password):
     remeha_api = RemehaHomeAPI()
     result = await remeha_api.async_resolve_external_data(email, password)
     access_token = result.get('access_token')
-    GetTempValues(access_token)
+    #print(access_token)
+    #setTemperature(access_token)
+    setScheduleMode(access_token)
+    #GetTempValues(access_token)
     #print(response_json)
     
 
@@ -187,6 +190,71 @@ def GetTempValues(access_token):
         return response_json
     except Exception as e:
         print(f"Error making GET request: {e}")
+        
+def setTemperature(access_token):
+    headers = {'Authorization': f'Bearer {access_token}',
+               'Ocp-Apim-Subscription-Key': 'df605c5470d846fc91e848b1cc653ddf'
+    }
+
+    try:
+        response = requests.get(
+            'https://api.bdrthermea.net/Mobile/api/homes/dashboard',
+            headers=headers
+        )
+        response.raise_for_status()
+
+        # Do something with the response if needed
+        response_json = response.json()
+        climateZoneId = response_json["appliances"][0]["climateZones"][0]["climateZoneId"]
+        zoneMode= response_json["appliances"][0]["climateZones"][0]["zoneMode"]
+        valueSetpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
+        print(zoneMode)
+        print(valueSetpoint)
+    except Exception as e:
+        print(f"Error making GET request: {e}")
+    
+    try:
+        json_data = {'roomTemperatureSetPoint': 20}
+        response = requests.post(    
+                                 f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climateZoneId}/modes/manual',
+                                 headers=headers,
+                                 json=json_data
+                                 )
+    except Exception as e:
+        print(f"Error making POST request: {e}")
+        
+def setScheduleMode(access_token):
+    headers = {'Authorization': f'Bearer {access_token}',
+               'Ocp-Apim-Subscription-Key': 'df605c5470d846fc91e848b1cc653ddf'
+    }
+
+    try:
+        response = requests.get(
+            'https://api.bdrthermea.net/Mobile/api/homes/dashboard',
+            headers=headers
+        )
+        response.raise_for_status()
+
+        # Do something with the response if needed
+        response_json = response.json()
+        climateZoneId = response_json["appliances"][0]["climateZones"][0]["climateZoneId"]
+        valueSetpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
+        zoneMode= response_json["appliances"][0]["climateZones"][0]["zoneMode"]
+        print(zoneMode)
+        print(valueSetpoint)
+        
+    except Exception as e:
+        print(f"Error making GET request: {e}")
+    
+    try:
+        json_data = {'heatingProgramId': 1}
+        response = requests.post(    
+                                 f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climateZoneId}/modes/schedule',
+                                 headers=headers,
+                                 json=json_data
+                                 )
+    except Exception as e:
+        print(f"Error making POST request: {e}")
 
 
 # Run the event loop
