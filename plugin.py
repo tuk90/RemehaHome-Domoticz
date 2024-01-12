@@ -1,5 +1,5 @@
 """
-<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring" version="0.0.2">
+<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring" version="0.0.3">
     <params>
         <param field="Mode1" label="Email" width="200px" required="true"/>
         <param field="Mode2" label="Password" width="200px" password="true" required="true"/>
@@ -227,7 +227,39 @@ class RemehaHomeAPI:
 
         except Exception as e:
             Domoticz.Error(f"Error making GET request: {e}")
-        
+    
+    async def set_temperature(self, access_token, roomTemperatureSetPoint):
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Ocp-Apim-Subscription-Key': 'df605c5470d846fc91e848b1cc653ddf'
+        }
+
+        try:
+            async with self._session.get(
+                'https://api.bdrthermea.net/Mobile/api/homes/dashboard',
+                headers=headers
+            ) as response:
+                response.raise_for_status()
+
+                # Do something with the response if needed
+                response_json = await response.json()
+                climateZoneId = response_json["appliances"][0]["climateZones"][0]["climateZoneId"]
+
+        except Exception as e:
+            Domoticz.Error(f"Error making GET request: {e}")
+
+        try:
+            json_data = {'roomTemperatureSetPoint': roomTemperatureSetPoint}
+            async with self._session.post(
+                f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climateZoneId}/modes/manual',
+                headers=headers,
+                json=json_data
+            ) as response:
+                response.raise_for_status()
+                Domoticz.Log(f"Temperature set successfully to {roomTemperatureSetPoint}")
+        except Exception as e:
+            Domoticz.Error(f"Error making POST request: {e}")
+    
     async def onheartbeat2(self):
         # Include your logic to request a new token here if needed
 
@@ -245,12 +277,23 @@ class RemehaHomeAPI:
         Domoticz.Log("Remeha Home plugin heartbeat")
         self.readOptions()
         asyncio.run(self.onheartbeat2())
-        #asyncio.run(RemehaHomeAPI.onheartbeat2(self))
-        #remeha_api = RemehaHomeAPI()
-        #result = await remeha_api.async_resolve_external_data()
-        #access_token = result.get("access_token")
-        #await remeha_api.update_devices(access_token)
-        #await remeha_api._async_cleanup()
+        
+    async def oncommand2(self, unit, command, level, hue):
+        remeha_api = RemehaHomeAPI()
+        if unit == 4:  # Assuming unit 4 is your setpoint device
+            if command == 'Set Level':
+                roomTemperatureSetPoint = float(level)
+        email = self.email
+        password = self.password
+        result = await remeha_api.async_resolve_external_data(email, password)
+        access_token = result.get("access_token")
+        await remeha_api.set_temperature(access_token,roomTemperatureSetPoint)
+        await remeha_api._async_cleanup()
+        
+    def oncommand(self, unit, command, level, hue):
+        Domoticz.Log("Remeha Home oncommand")
+        self.readOptions()
+        asyncio.run(self.oncommand2(unit, command, level, hue))
 
 # Create an instance of the Remehalugin class
 _plugin = RemehaHomeAPI()
@@ -263,6 +306,9 @@ def onStop():
 
 def onHeartbeat():
     _plugin.onheartbeat()
+
+def onCommand(unit, command, level, hue):
+    _plugin.oncommand(unit, command, level, hue)
 
 def onConfigurationChanged():
     # Called when the plugin configuration is changed in Domoticz GUI
