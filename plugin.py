@@ -182,7 +182,7 @@ class RemehaHomeAPI:
         self._session.close()
 
     def update_devices(self, access_token):
-        # Update Domoticz devices with data from the external API
+        # Update Domoticz devices with data from Remeha Home
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Ocp-Apim-Subscription-Key": "df605c5470d846fc91e848b1cc653ddf",
@@ -195,9 +195,12 @@ class RemehaHomeAPI:
             response.raise_for_status()
 
             response_json = response.json()
+            
+            # Update Domoticz devices here based on the response_json
             value_room_temperature = response_json["appliances"][0]["climateZones"][0]["roomTemperature"]
             value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperature"]
             if value_outdoor_temperature is None:
+                # No real outdoor temperature device, using cloud value
                 value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["cloudOutdoorTemperature"]
             value_water_pressure = response_json["appliances"][0]["waterPressure"]
             value_setpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
