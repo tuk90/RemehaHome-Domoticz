@@ -13,67 +13,63 @@ import json
 import urllib
 import secrets
 import requests
-import asyncio
-from aiohttp import ClientSession
 
 class RemehaHomeAPI:
     def __init__(self):
-        self._session = ClientSession()
+        # Initialize a session for making HTTP requests
+        self._session = requests.Session()
         self.email = ""
         self.password = ""
-        
+
     def onStart(self):
         # Called when the plugin is started
         Domoticz.Log("Remeha Home Plugin started.")
-
         # Read options from Domoticz GUI
         self.readOptions()
-
         # Check if there are no existing devices
         if len(Devices) != 4:
-            # Example: Create two normal Switch devices for controlling two bed sides
+            # Example: Create devices for temperature, pressure, and setpoint
             self.createDevices()
         else:
             Domoticz.Log("Devices already exist. Skipping device creation.")
-            
         Domoticz.Heartbeat(30)
 
     def onStop(self):
         # Called when the plugin is stopped
         Domoticz.Log("Remeha Home Plugin stopped.")
-        
+
     def readOptions(self):
         # Read options from Domoticz GUI
         if Parameters["Mode1"]:
             self.email = Parameters["Mode1"]
-      
-        # Retrieve the API key from Parameters if set, otherwise log an error
         if "Mode2" in Parameters and Parameters["Mode2"]:
             self.password = Parameters["Mode2"]
         else:
             Domoticz.Error("Password not configured in the Domoticz plugin configuration.")
-    
+
     def createDevices(self):
         # Declare Devices variable
         global Devices
 
-        device_name_1 ="roomTemperature"  # Adjust the device name as needed
-        device_id_1 = 1  # Adjust the device ID as needed
+        # Create devices for temperature, pressure, and setpoint
+        device_name_1 = "roomTemperature"
+        device_id_1 = 1
         Domoticz.Device(Name=device_name_1, Unit=device_id_1, TypeName="Temperature", Used=1).Create()
 
-        device_name_2 = "outdoorTemperature" 
+        device_name_2 = "outdoorTemperature"
         device_id_2 = 2
         Domoticz.Device(Name=device_name_2, Unit=device_id_2, TypeName="Temperature", Used=1).Create()
-        
-        device_name_3 = "waterPressure" 
-        device_id_3 = 3 
+
+        device_name_3 = "waterPressure"
+        device_id_3 = 3
         Domoticz.Device(Name=device_name_3, Unit=device_id_3, TypeName="Pressure", Used=1).Create()
 
         device_name_4 = "setPoint"
-        device_id_4 = 4 
+        device_id_4 = 4
         Domoticz.Device(Name=device_name_4, Unit=device_id_4, TypeName="Setpoint", Used=1).Create()
 
-    async def async_resolve_external_data(self, email, password):
+    def resolve_external_data(self):
+        # Logic for resolving external data (OAuth2 flow)
         random_state = secrets.token_urlsafe()
         code_challenge = secrets.token_urlsafe(64)
         code_challenge_sha256 = (
@@ -84,7 +80,7 @@ class RemehaHomeAPI:
             .rstrip("=")
         )
 
-        response = await self._session.get(
+        response = self._session.get(
             "https://remehalogin.bdrthermea.net/bdrb2cprod.onmicrosoft.com/oauth2/v2.0/authorize",
             params={
                 "response_type": "code",
@@ -114,15 +110,14 @@ class RemehaHomeAPI:
 
         csrf_token = next(
             cookie.value
-            for cookie in self._session.cookie_jar
+            for cookie in self._session.cookies
             if (
-                cookie.key == "x-ms-cpim-csrf"
-                and cookie["domain"] == "remehalogin.bdrthermea.net"
+                cookie.name == "x-ms-cpim-csrf"
+                and cookie.domain == ".remehalogin.bdrthermea.net"
             )
         )
 
-        response = await self._session.post(
-
+        response = self._session.post(
             "https://remehalogin.bdrthermea.net/bdrb2cprod.onmicrosoft.com/B2C_1A_RPSignUpSignInNewRoomv3.1/SelfAsserted",
             params={
                 "tx": "StateProperties=" + state_properties,
@@ -131,17 +126,16 @@ class RemehaHomeAPI:
             headers={"x-csrf-token": csrf_token},
             data={
                 "request_type": "RESPONSE",
-                "signInName": email,
-                "password": password,
+                "signInName": self.email,
+                "password": self.password,
             },
-            
         )
         response.raise_for_status()
-        response_json = json.loads(await response.text())
+        response_json = json.loads(response.text)
         if response_json["status"] != "200":
             Domoticz.Log(response_json["status"])
 
-        response = await self._session.get(
+        response = self._session.get(
             "https://remehalogin.bdrthermea.net/bdrb2cprod.onmicrosoft.com/B2C_1A_RPSignUpSignInNewRoomv3.1/api/CombinedSigninAndSignup/confirmed",
             params={
                 "rememberMe": "false",
@@ -164,138 +158,113 @@ class RemehaHomeAPI:
             "code_verifier": code_challenge,
             "client_id": "6ce007c6-0628-419e-88f4-bee2e6418eec",
         }
-        return await self._async_request_new_token(grant_params)
+        return self._request_new_token(grant_params)
 
-    async def _async_request_new_token(self, grant_params):
-        async with self._session.post(
+    def _request_new_token(self, grant_params):
+        # Logic for requesting a new access token
+        with self._session.post(
             "https://remehalogin.bdrthermea.net/bdrb2cprod.onmicrosoft.com/oauth2/v2.0/token?p=B2C_1A_RPSignUpSignInNewRoomV3.1",
             data=grant_params,
             allow_redirects=True,
         ) as response:
-            if response.status == 400:
-                response_json = await response.json()
-                print(
+            if response.status_code == 400:
+                response_json = response.json()
+                Domoticz.Log(
                     "OAuth2 token request returned '400 Bad Request': %s",
                     response_json["error_description"],
                 )
             response.raise_for_status()
-            response_json = await response.json()
-                        
-
+            response_json = response.json()
         return response_json
 
-    async def _async_cleanup(self):
-        await self._session.close()
+    def cleanup(self):
+        # Cleanup session resources
+        self._session.close()
 
-
-    async def update_devices(self, access_token):
+    def update_devices(self, access_token):
+        # Update Domoticz devices with data from the external API
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Ocp-Apim-Subscription-Key": "df605c5470d846fc91e848b1cc653ddf",
         }
 
         try:
-            async with self._session.get(
+            response = self._session.get(
                 "https://api.bdrthermea.net/Mobile/api/homes/dashboard", headers=headers
-            ) as response:
-                response.raise_for_status()
+            )
+            response.raise_for_status()
 
-                response_json = await response.json()
-                #Domoticz.Log(response_json)
+            response_json = response.json()
+            value_room_temperature = response_json["appliances"][0]["climateZones"][0]["roomTemperature"]
+            value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperature"]
+            if value_outdoor_temperature is None:
+                value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["cloudOutdoorTemperature"]
+            value_water_pressure = response_json["appliances"][0]["waterPressure"]
+            value_setpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
 
-                # Update Domoticz devices here based on the response_json
-                valueRoomtemperature = response_json["appliances"][0]["climateZones"][0]["roomTemperature"]
-                valueOutdoorTemperature = response_json["appliances"][0]["outdoorTemperature"]
-                if valueOutdoorTemperature is None:
-                        # No real outdoor temperature device, using cloud value
-                        valueOutdoorTemperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["cloudOutdoorTemperature"]
-                valueWaterPressure = response_json["appliances"][0]["waterPressure"]
-                valueSetpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
-
-                # other usefull fields
-                # firePlaceModeActive
-
-                
-                if str(Devices[1].sValue) != str(valueRoomtemperature):
-                    Devices[1].Update(nValue=0, sValue=str(valueRoomtemperature))
-                if str(Devices[2].sValue) != str(valueOutdoorTemperature):
-                    Devices[2].Update(nValue=0, sValue=str(valueOutdoorTemperature))
-                if str(Devices[3].sValue) != str(valueWaterPressure):
-                    Devices[3].Update(nValue=0, sValue=str(valueWaterPressure))
-                if str(Devices[4].sValue) != str(valueSetpoint):
-                    Devices[4].Update(nValue=0, sValue=str(valueSetpoint))
+            if str(Devices[1].sValue) != str(value_room_temperature):
+                Devices[1].Update(nValue=0, sValue=str(value_room_temperature))
+            if str(Devices[2].sValue) != str(value_outdoor_temperature):
+                Devices[2].Update(nValue=0, sValue=str(value_outdoor_temperature))
+            if str(Devices[3].sValue) != str(value_water_pressure):
+                Devices[3].Update(nValue=0, sValue=str(value_water_pressure))
+            if str(Devices[4].sValue) != str(value_setpoint):
+                Devices[4].Update(nValue=0, sValue=str(value_setpoint))
 
         except Exception as e:
             Domoticz.Error(f"Error making GET request: {e}")
-    
-    async def set_temperature(self, access_token, roomTemperatureSetPoint):
+
+    def set_temperature(self, access_token, room_temperature_setpoint):
+        # Set temperature in the external system using a POST request
         headers = {
             'Authorization': f'Bearer {access_token}',
             'Ocp-Apim-Subscription-Key': 'df605c5470d846fc91e848b1cc653ddf'
         }
 
         try:
-            async with self._session.get(
+            response = self._session.get(
                 'https://api.bdrthermea.net/Mobile/api/homes/dashboard',
                 headers=headers
-            ) as response:
-                response.raise_for_status()
+            )
+            response.raise_for_status()
 
-                # Do something with the response if needed
-                response_json = await response.json()
-                climateZoneId = response_json["appliances"][0]["climateZones"][0]["climateZoneId"]
+            response_json = response.json()
+            climate_zone_id = response_json["appliances"][0]["climateZones"][0]["climateZoneId"]
 
         except Exception as e:
             Domoticz.Error(f"Error making GET request: {e}")
 
         try:
-            json_data = {'roomTemperatureSetPoint': roomTemperatureSetPoint}
-            async with self._session.post(
-                f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climateZoneId}/modes/manual',
+            json_data = {'roomTemperatureSetPoint': room_temperature_setpoint}
+            response = self._session.post(
+                f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/manual',
                 headers=headers,
                 json=json_data
-            ) as response:
-                response.raise_for_status()
-                Domoticz.Log(f"Temperature set successfully to {roomTemperatureSetPoint}")
+            )
+            response.raise_for_status()
+            Domoticz.Log(f"Temperature set successfully to {room_temperature_setpoint}")
         except Exception as e:
             Domoticz.Error(f"Error making POST request: {e}")
-    
-    async def onheartbeat2(self):
-        # Include your logic to request a new token here if needed
-
-        remeha_api = RemehaHomeAPI()
-        email = self.email
-        password = self.password
-        result = await remeha_api.async_resolve_external_data(email, password)
-        access_token = result.get("access_token")
-        await remeha_api.update_devices(access_token)
-        await remeha_api._async_cleanup()
-
 
     def onheartbeat(self):
-    # Include your logic to request a new token here if needed
+        # Heartbeat function called periodically
         Domoticz.Log("Remeha Home plugin heartbeat")
-        self.readOptions()
-        asyncio.run(self.onheartbeat2())
-        
-    async def oncommand2(self, unit, command, level, hue):
-        remeha_api = RemehaHomeAPI()
-        if unit == 4:  # Assuming unit 4 is your setpoint device
-            if command == 'Set Level':
-                roomTemperatureSetPoint = float(level)
-        email = self.email
-        password = self.password
-        result = await remeha_api.async_resolve_external_data(email, password)
+        result = self.resolve_external_data()
         access_token = result.get("access_token")
-        await remeha_api.set_temperature(access_token,roomTemperatureSetPoint)
-        await remeha_api._async_cleanup()
-        
-    def oncommand(self, unit, command, level, hue):
-        Domoticz.Log("Remeha Home oncommand")
-        self.readOptions()
-        asyncio.run(self.oncommand2(unit, command, level, hue))
+        self.update_devices(access_token)
+        self.cleanup()
 
-# Create an instance of the Remehalugin class
+    def oncommand(self, unit, command, level, hue):
+        # Command handling function
+        if unit == 4:  # setpoint device
+            if command == 'Set Level':
+                room_temperature_setpoint = float(level)
+        result = self.resolve_external_data()
+        access_token = result.get("access_token")
+        self.set_temperature(access_token, room_temperature_setpoint)
+        self.cleanup()
+
+# Create an instance of the RemehaHomeAPI class
 _plugin = RemehaHomeAPI()
 
 def onStart():
@@ -311,5 +280,4 @@ def onCommand(unit, command, level, hue):
     _plugin.oncommand(unit, command, level, hue)
 
 def onConfigurationChanged():
-    # Called when the plugin configuration is changed in Domoticz GUI
     _plugin.readOptions()
