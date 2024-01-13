@@ -1,40 +1,29 @@
 # Remeha Home Plugin for Domoticz
 
-## Description
-This Domoticz Python plugin allows you to integrate Remeha Home devices into your Domoticz home automation system.
-
-The plugin.py is the domoticz plugin and the Remehatest.py can be used to test stuff with the Remeha API.
-
-## Installation
-
-1. Download the plugin files to your Domoticz plugins directory.
-2. Restart Domoticz.
-
-## Configuration
-
-1. Open the Domoticz web interface.
-2. Navigate to "Setup" -> "Hardware."
-3. Add a new hardware device with the type "Remeha Home Plugin."
-4. Enter your Remeha Home account credentials (email and password) in the configuration settings.
-
-## Devices
-
-The plugin creates the following devices by default:
-
-1. Room Temperature Sensor
-2. Outdoor Temperature Sensor
-3. Water Pressure Sensor
-
-These devices are used to display information from the Remeha Home API.
-
-## Usage
-
-Once the plugin is configured and devices are created, it will automatically fetch data from the Remeha Home API at regular intervals (heartbeats) and update the corresponding Domoticz devices.
-
-## Important Notes
-
-- Ensure that your Domoticz server has internet access to communicate with the Remeha Home API.
-- The plugin uses asyncio and aiohttp libraries for asynchronous requests. Make sure your Domoticz environment supports these.
+## Overview
+This Domoticz Python plugin integrates with the Remeha Home API, providing real-time information about your heating system. It creates Domoticz devices for temperature, pressure, and setpoint control.
 
 ## Credits
-This plugin is based on the [Remeha Home Python library](https://github.com/msvisser/remeha_home) by Michiel Visser.
+This plugin is based on the Remeha Home Python library by Michiel Visser, available at [GitHub - Remeha Home Library](https://github.com/msvisser/remeha_home).
+
+## Installation
+1. Clone this repository into the Domoticz plugins folder using the following command: git clone https://github.com/tuk90/RemehaHome-Domoticz.git
+2. Restart the Domoticz service.
+3. Go to the Domoticz web interface, navigate to "Hardware," and add a new hardware device with type "Remeha Home Plugin."
+
+## Plugin Parameters
+- **Email:** Your Remeha Home account email.
+- **Password:** Your Remeha Home account password.
+
+## Devices
+The plugin creates the following devices in Domoticz:
+1. Room Temperature
+2. Outdoor Temperature
+3. Water Pressure
+4. Setpoint
+
+## Usage
+The plugin fetches data from the Remeha Home API and updates the corresponding Domoticz devices. Additionally, you can set the temperature setpoint using the "Setpoint" device.
+
+## Support
+For any issues or questions, please open an issue on the [GitHub repository](https://github.com/tuk90/RemehaHome-Domoticz).
