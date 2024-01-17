@@ -240,7 +240,7 @@ class RemehaHomeAPI:
         try:
             json_data = {'roomTemperatureSetPoint': room_temperature_setpoint}
             response = self._session.post(
-                f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/manual',
+                f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/temporary-override',
                 headers=headers,
                 json=json_data
             )
