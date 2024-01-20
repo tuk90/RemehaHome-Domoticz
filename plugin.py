@@ -282,15 +282,22 @@ class RemehaHomeAPI:
     
         try:
             response = requests.get(
-                f'https://api.bdrthermea.net/Mobile/api/appliances/{appliance_id}/energyconsumption/yearly?startDate={current_year}-01-01 00:00:00.000Z&endDate={next_year}-01-01 00:00:00.000Z',
+                f'https://api.bdrthermea.net/Mobile/api/appliances/{appliance_id}/energyconsumption/yearly?startDate=1900-01-01 00:00:00.000Z&endDate={next_year}-01-01 00:00:00.000Z',
                 headers=headers
             )
             response_json = response.json()
-            EnergyConsumed = response_json["data"][0]["heatingEnergyConsumed"]
-            EnergyConsumed = EnergyConsumed * 1000            
-            if str(Devices[5].sValue) != str(EnergyConsumed):
-                Devices[5].Update(nValue=0, sValue=str(EnergyConsumed))
-            print(response_json)
+            
+            # Initialize a variable to store the sum
+            total_heating_energy_consumed = 0
+            
+            #sums up all the year results to get the total energycounter
+            for entry in response_json["data"]:
+                total_heating_energy_consumed += entry["heatingEnergyConsumed"]
+            
+            #EnergyConsumed = response_json["data"][0]["heatingEnergyConsumed"]
+            total_heating_energy_consumed = total_heating_energy_consumed * 1000            
+            if str(Devices[5].sValue) != str(total_heating_energy_consumed):
+                Devices[5].Update(nValue=0, sValue=str(total_heating_energy_consumed))
         except Exception as e:
             print(f"Error making GET request: {e}")
 
