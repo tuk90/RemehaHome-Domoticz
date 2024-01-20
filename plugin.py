@@ -13,6 +13,7 @@ import json
 import urllib
 import secrets
 import requests
+import datetime
 
 class RemehaHomeAPI:
     def __init__(self):
@@ -27,7 +28,7 @@ class RemehaHomeAPI:
         # Read options from Domoticz GUI
         self.readOptions()
         # Check if there are no existing devices
-        if len(Devices) != 4:
+        if len(Devices) != 5:
             # Example: Create devices for temperature, pressure, and setpoint
             self.createDevices()
         else:
@@ -67,6 +68,10 @@ class RemehaHomeAPI:
         device_name_4 = "setPoint"
         device_id_4 = 4
         Domoticz.Device(Name=device_name_4, Unit=device_id_4, TypeName="Setpoint", Used=1).Create()
+        
+        device_name_5 = "EnergyConsumption"
+        device_id_5 = 5
+        Domoticz.Device(Name=device_name_5, Unit=device_id_5, Type=113, TypeName="Counter", Subtype=0, Switchtype=0, Used=1).Create()
 
     def resolve_external_data(self):
         # Logic for resolving external data (OAuth2 flow)
@@ -248,6 +253,47 @@ class RemehaHomeAPI:
             Domoticz.Log(f"Temperature set successfully to {room_temperature_setpoint}")
         except Exception as e:
             Domoticz.Error(f"Error making POST request: {e}")
+    def getDailyEnergyConsumption(self, access_token):
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Ocp-Apim-Subscription-Key': 'df605c5470d846fc91e848b1cc653ddf'
+            }
+        try:
+            response = requests.get(
+            'https://api.bdrthermea.net/Mobile/api/homes/dashboard',
+            headers=headers
+        )
+            response.raise_for_status()
+            # Do something with the response if needed
+            response_json = response.json()
+        except Exception as e:
+            print(f"Error making GET request: {e}")
+        
+        appliance_id = response_json["appliances"][0]["applianceId"]
+        
+        current_year = datetime.datetime.now().year
+        next_year = current_year + 1
+    
+        today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_today = today + datetime.timedelta(hours=23, minutes=59, seconds=59)
+
+        today_string = today.strftime("%Y-%m-%d %H:%M:%S.%fZ")
+        end_of_today_string = end_of_today.strftime("%Y-%m-%d %H:%M:%S.%fZ")
+    
+        try:
+            response = requests.get(
+                f'https://api.bdrthermea.net/Mobile/api/appliances/{appliance_id}/energyconsumption/yearly?startDate={current_year}-01-01 00:00:00.000Z&endDate={next_year}-01-01 00:00:00.000Z',
+                headers=headers
+            )
+            response_json = response.json()
+            EnergyConsumed = response_json["data"][0]["heatingEnergyConsumed"]
+            EnergyConsumed = EnergyConsumed * 1000            
+            if str(Devices[5].sValue) != str(EnergyConsumed):
+                Devices[5].Update(nValue=0, sValue=str(EnergyConsumed))
+            print(response_json)
+        except Exception as e:
+            print(f"Error making GET request: {e}")
+
 
     def onheartbeat(self):
         # Heartbeat function called periodically
@@ -255,6 +301,7 @@ class RemehaHomeAPI:
         result = self.resolve_external_data()
         access_token = result.get("access_token")
         self.update_devices(access_token)
+        self.getDailyEnergyConsumption(access_token)
         self.cleanup()
 
     def oncommand(self, unit, command, level, hue):
