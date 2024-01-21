@@ -14,6 +14,7 @@ This plugin is based on the Remeha Home Python library by Michiel Visser, availa
 ## Plugin Parameters
 - **Email:** Your Remeha Home account email.
 - **Password:** Your Remeha Home account password.
+- **Poll Interval:** Poll Interval (default 30 seconds).
 
 ## Devices
 The plugin creates the following devices in Domoticz:
@@ -21,9 +22,10 @@ The plugin creates the following devices in Domoticz:
 2. Outdoor Temperature
 3. Water Pressure
 4. Setpoint
+5. Domestic Hot Water Temperature
 
 ## Usage
-The plugin fetches data from the Remeha Home API and updates the corresponding Domoticz devices. Additionally, you can set the temperature setpoint using the "Setpoint" device.
+The plugin fetches data from the Remeha Home API and updates the corresponding Domoticz devices. Additionally, you can set the room temperature setpoint using the "Setpoint" device.
 
 ## Support
 For any issues or questions, please open an issue on the [GitHub repository](https://github.com/tuk90/RemehaHome-Domoticz).
