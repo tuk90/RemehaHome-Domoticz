@@ -71,7 +71,7 @@ class RemehaHomeAPI:
         
         device_name_5 = "EnergyConsumption"
         device_id_5 = 5
-        Domoticz.Device(Name=device_name_5, Unit=device_id_5, Type=113, TypeName="Counter", Subtype=0, Switchtype=0, Used=1).Create()
+        Domoticz.Device(Name=device_name_5, Unit=device_id_5, Type=243, TypeName="Kwh", Subtype=29, Used=1).Create()
 
     def resolve_external_data(self):
         # Logic for resolving external data (OAuth2 flow)
@@ -295,9 +295,30 @@ class RemehaHomeAPI:
                 total_heating_energy_consumed += entry["heatingEnergyConsumed"]
             
             #EnergyConsumed = response_json["data"][0]["heatingEnergyConsumed"]
-            total_heating_energy_consumed = total_heating_energy_consumed * 1000            
-            if str(Devices[5].sValue) != str(total_heating_energy_consumed):
-                Devices[5].Update(nValue=0, sValue=str(total_heating_energy_consumed))
+            total_heating_energy_consumed = total_heating_energy_consumed * 1000  
+            
+        except Exception as e:
+            print(f"Error making GET request: {e}")
+            
+        try:
+            response = requests.get(
+                f'https://api.bdrthermea.net/Mobile/api/appliances/{appliance_id}/energyconsumption/daily?startDate={today_string}&endDate={end_of_today_string}',
+                headers=headers
+            )
+            response_json = response.json()
+            
+            EnergyToday = response_json["data"][0]["heatingEnergyConsumed"]
+            
+            EnergyToday = EnergyToday * 1000
+            
+            # Split the string based on the semicolon
+            split_values = (Devices[5].sValue).split(";")
+            # Check the value before the semicolon against another string
+            DomoticzCurrentConsume = split_values[0]
+            
+            if datetime.datetime.now().hour in (0, 1, 2):         
+                if str(DomoticzCurrentConsume) != str(EnergyToday):
+                    Devices[5].Update(nValue=0, sValue=str(EnergyToday) + ";" + str(total_heating_energy_consumed))
         except Exception as e:
             print(f"Error making GET request: {e}")
 
