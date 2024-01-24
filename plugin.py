@@ -316,7 +316,7 @@ class RemehaHomeAPI:
             # Check the value before the semicolon against another string
             DomoticzCurrentConsume = split_values[0]
             
-            if datetime.datetime.now().hour in (0, 1, 2):         
+            if datetime.datetime.now().hour not in (0, 1, 2):         
                 if str(DomoticzCurrentConsume) != str(EnergyToday):
                     Devices[5].Update(nValue=0, sValue=str(EnergyToday) + ";" + str(total_heating_energy_consumed))
         except Exception as e:
