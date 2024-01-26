@@ -221,6 +221,9 @@ class RemehaHomeAPI:
 
             response_json = response.json()
             
+            # declaring value_dhwTemperature to not break if the value is not present.
+            value_dhwTemperature = None
+            
             # Update Domoticz devices here based on the response_json
             value_room_temperature = response_json["appliances"][0]["climateZones"][0]["roomTemperature"]
             value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperature"]
@@ -229,7 +232,10 @@ class RemehaHomeAPI:
                 value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["cloudOutdoorTemperature"]
             value_water_pressure = response_json["appliances"][0]["waterPressure"]
             value_setpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
-            value_dhwTemperature = response_json["appliances"][0]["hotWaterZones"][0]["dhwTemperature"]
+            try:
+                value_dhwTemperature = response_json["appliances"][0]["hotWaterZones"][0]["dhwTemperature"]
+            except:
+                pass
 
             #if str(Devices[1].sValue) != str(value_room_temperature):
             Devices[1].Update(nValue=0, sValue=str(value_room_temperature))
