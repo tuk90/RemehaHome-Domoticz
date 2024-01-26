@@ -240,7 +240,8 @@ class RemehaHomeAPI:
             #if str(Devices[4].sValue) != str(value_setpoint):
             Devices[4].Update(nValue=0, sValue=str(value_setpoint))
             #if str(Devices[5].sValue) != str(value_dhwTemperature):
-            Devices[5].Update(nValue=0, sValue=str(value_dhwTemperature))
+            if value_dhwTemperature is not None:
+                Devices[5].Update(nValue=0, sValue=str(value_dhwTemperature))
             
 
         except Exception as e:
