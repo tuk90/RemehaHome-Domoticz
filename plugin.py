@@ -14,6 +14,7 @@ import urllib
 import secrets
 import requests
 import datetime
+import calendar
 
 class RemehaHomeAPI:
     def __init__(self):
@@ -69,9 +70,9 @@ class RemehaHomeAPI:
         device_id_4 = 4
         Domoticz.Device(Name=device_name_4, Unit=device_id_4, TypeName="Setpoint", Used=1).Create()
         
-        device_name_5 = "EnergyConsumption"
-        device_id_5 = 5
-        Domoticz.Device(Name=device_name_5, Unit=device_id_5, Type=243, TypeName="Kwh", Subtype=29, Used=1).Create()
+        device_name_6 = "EnergyConsumption"
+        device_id_6 = 6
+        Domoticz.Device(Name=device_name_6, Unit=device_id_6, Type=243, TypeName="Kwh", Subtype=29, Used=1).Create()
 
     def resolve_external_data(self):
         # Logic for resolving external data (OAuth2 flow)
@@ -253,6 +254,7 @@ class RemehaHomeAPI:
             Domoticz.Log(f"Temperature set successfully to {room_temperature_setpoint}")
         except Exception as e:
             Domoticz.Error(f"Error making POST request: {e}")
+    
     def getDailyEnergyConsumption(self, access_token):
         headers = {
             'Authorization': f'Bearer {access_token}',
@@ -270,35 +272,58 @@ class RemehaHomeAPI:
             print(f"Error making GET request: {e}")
         
         appliance_id = response_json["appliances"][0]["applianceId"]
-        
         current_year = datetime.datetime.now().year
-        next_year = current_year + 1
-    
-        today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_today = today + datetime.timedelta(hours=23, minutes=59, seconds=59)
 
-        today_string = today.strftime("%Y-%m-%d %H:%M:%S.%fZ")
-        end_of_today_string = end_of_today.strftime("%Y-%m-%d %H:%M:%S.%fZ")
-    
+        # Step 1: Get all results of the previous years until the last day of the previous year
+        last_day_of_last_year = datetime.datetime(current_year - 1, 12, 31)
+        yearly_url = f"https://api.bdrthermea.net/Mobile/api/appliances/{appliance_id}/energyconsumption/yearly?startDate=1900-01-01T00:00:00.000Z&endDate={last_day_of_last_year.strftime('%Y-%m-%dT00:00:00.000Z')}"
+        
         try:
-            response = requests.get(
-                f'https://api.bdrthermea.net/Mobile/api/appliances/{appliance_id}/energyconsumption/yearly?startDate=1900-01-01 00:00:00.000Z&endDate={next_year}-01-01 00:00:00.000Z',
-                headers=headers
-            )
-            response_json = response.json()
+            yearly_data = requests.get(yearly_url, headers=headers).json()
             
-            # Initialize a variable to store the sum
-            total_heating_energy_consumed = 0
-            
-            #sums up all the year results to get the total energycounter
-            for entry in response_json["data"]:
-                total_heating_energy_consumed += entry["heatingEnergyConsumed"]
-            
-            #EnergyConsumed = response_json["data"][0]["heatingEnergyConsumed"]
-            total_heating_energy_consumed = total_heating_energy_consumed * 1000  
-            
+            # Extract "heatingEnergyConsumed" from each row in the yearly response body
+            heating_energy_consumed_values_yearly = [entry["heatingEnergyConsumed"] for entry in yearly_data["data"]]
+
+            # Calculate total heating energy consumed for yearly data
+            total_heating_energy_consumed_yearly = sum(heating_energy_consumed_values_yearly)
         except Exception as e:
             print(f"Error making GET request: {e}")
+
+        # Step 2: Get all results of the previous months excluding the current month
+        current_month = datetime.datetime.now().month
+
+        # Get the last day of the current month
+        last_day_of_current_month = calendar.monthrange(current_year, current_month)[1]
+
+        # Create a datetime object for the last day of the current month
+        end_of_current_month = datetime.datetime(current_year, current_month, last_day_of_current_month) 
+        
+        try:
+            monthly_url = f"https://api.bdrthermea.net/Mobile/api/appliances/{appliance_id}/energyconsumption/monthly?startDate={datetime.datetime.now().year}-01-01T00:00:00.000Z&endDate={end_of_current_month.strftime('%Y-%m-%dT00:00:00.000Z')}"
+            #print(monthly_url)
+            monthly_data = requests.get(monthly_url, headers=headers).json()
+      
+            # Extract "heatingEnergyConsumed" from each row in the monthly response body
+            heating_energy_consumed_values_monthly = [entry["heatingEnergyConsumed"] for entry in monthly_data["data"]]
+
+            # Calculate total heating energy consumed for monthly data
+            total_heating_energy_consumed_monthly = sum(heating_energy_consumed_values_monthly)
+        except Exception as e:
+            print(f"Error making GET request: {e}")
+
+         # Combine the totals
+        total_heating_energy_consumed = (
+        total_heating_energy_consumed_yearly +
+        total_heating_energy_consumed_monthly
+        ) 
+        
+        # Get the start and end date for today
+        today_start = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = datetime.datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        # Format the start and end dates in the required format
+        today_string = today_start.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+        end_of_today_string = today_end.strftime('%Y-%m-%dT%H:%M:%S.999Z')
             
         try:
             response = requests.get(
@@ -312,13 +337,13 @@ class RemehaHomeAPI:
             EnergyToday = EnergyToday * 1000
             
             # Split the string based on the semicolon
-            split_values = (Devices[5].sValue).split(";")
+            split_values = (Devices[6].sValue).split(";")
             # Check the value before the semicolon against another string
             DomoticzCurrentConsume = split_values[0]
             
             if datetime.datetime.now().hour not in (0, 1, 2):         
-                if str(DomoticzCurrentConsume) != str(EnergyToday):
-                    Devices[5].Update(nValue=0, sValue=str(EnergyToday) + ";" + str(total_heating_energy_consumed))
+                #if str(DomoticzCurrentConsume) != str(EnergyToday):
+                Devices[6].Update(nValue=0, sValue=str(EnergyToday) + ";" + str(total_heating_energy_consumed))
         except Exception as e:
             print(f"Error making GET request: {e}")
 
