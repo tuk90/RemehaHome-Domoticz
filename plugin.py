@@ -317,7 +317,7 @@ class RemehaHomeAPI:
         total_heating_energy_consumed_monthly
         ) 
         
-        total_heating_energy_consumed = total_heating_energy_consumed *1000
+        total_heating_energy_consumed = total_heating_energy_consumed * 1000
         
         # Get the start and end date for today
         today_start = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
