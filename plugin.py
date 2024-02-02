@@ -28,12 +28,6 @@ class RemehaHomeAPI:
         # Called when the plugin is started
         Domoticz.Log("Remeha Home Plugin started.")
         
-        global appliance_id
-        appliance_id = None
-        
-        global climate_zone_id
-        climate_zone_id = None
-        
         # Read options from Domoticz GUI
         self.readOptions()
         # Check if there are no existing devices
@@ -201,6 +195,12 @@ class RemehaHomeAPI:
             "Authorization": f"Bearer {access_token}",
             "Ocp-Apim-Subscription-Key": "df605c5470d846fc91e848b1cc653ddf",
         }
+        
+        global appliance_id
+        appliance_id = None
+        
+        global climate_zone_id
+        climate_zone_id = None
 
         try:
             response = self._session.get(
@@ -218,10 +218,11 @@ class RemehaHomeAPI:
                 value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["cloudOutdoorTemperature"]
             value_water_pressure = response_json["appliances"][0]["waterPressure"]
             value_setpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
+            if climate_zone_id is None:
+                climate_zone_id = response_json["appliances"][0]["climateZones"][0]["climateZoneId"]            
             if appliance_id is None:
                 appliance_id = response_json["appliances"][0]["applianceId"]
-            if climate_zone_id is None:
-                climate_zone_id = response_json["appliances"][0]["climateZones"][0]["climateZoneId"]
+
             
 
             if str(Devices[1].sValue) != str(value_room_temperature):
