@@ -26,6 +26,13 @@ class RemehaHomeAPI:
     def onStart(self):
         # Called when the plugin is started
         Domoticz.Log("Remeha Home Plugin started.")
+        
+        global appliance_id
+        appliance_id = None
+        
+        global climate_zone_id
+        climate_zone_id = None
+        
         # Read options from Domoticz GUI
         self.readOptions()
         # Check if there are no existing devices
@@ -210,6 +217,11 @@ class RemehaHomeAPI:
                 value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["cloudOutdoorTemperature"]
             value_water_pressure = response_json["appliances"][0]["waterPressure"]
             value_setpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
+            if appliance_id is None:
+                appliance_id = response_json["appliances"][0]["applianceId"]
+            if climate_zone_id is None:
+                climate_zone_id = response_json["appliances"][0]["climateZones"][0]["climateZoneId"]
+            
 
             if str(Devices[1].sValue) != str(value_room_temperature):
                 Devices[1].Update(nValue=0, sValue=str(value_room_temperature))
@@ -231,19 +243,6 @@ class RemehaHomeAPI:
         }
 
         try:
-            response = self._session.get(
-                'https://api.bdrthermea.net/Mobile/api/homes/dashboard',
-                headers=headers
-            )
-            response.raise_for_status()
-
-            response_json = response.json()
-            climate_zone_id = response_json["appliances"][0]["climateZones"][0]["climateZoneId"]
-
-        except Exception as e:
-            Domoticz.Error(f"Error making GET request: {e}")
-
-        try:
             json_data = {'roomTemperatureSetPoint': room_temperature_setpoint}
             response = self._session.post(
                 f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/temporary-override',
@@ -260,18 +259,7 @@ class RemehaHomeAPI:
             'Authorization': f'Bearer {access_token}',
             'Ocp-Apim-Subscription-Key': 'df605c5470d846fc91e848b1cc653ddf'
             }
-        try:
-            response = requests.get(
-            'https://api.bdrthermea.net/Mobile/api/homes/dashboard',
-            headers=headers
-        )
-            response.raise_for_status()
-            # Do something with the response if needed
-            response_json = response.json()
-        except Exception as e:
-            print(f"Error making GET request: {e}")
-        
-        appliance_id = response_json["appliances"][0]["applianceId"]
+
         current_year = datetime.datetime.now().year
 
         # Step 1: Get all results of the previous years until the last day of the previous year
