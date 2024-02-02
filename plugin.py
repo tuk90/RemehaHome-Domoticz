@@ -15,6 +15,7 @@ import secrets
 import requests
 import datetime
 import calendar
+import time
 
 class RemehaHomeAPI:
     def __init__(self):
@@ -259,6 +260,7 @@ class RemehaHomeAPI:
             'Authorization': f'Bearer {access_token}',
             'Ocp-Apim-Subscription-Key': 'df605c5470d846fc91e848b1cc653ddf'
             }
+        Domoticz.Log("Daily energy consumption updated")
 
         current_year = datetime.datetime.now().year
 
@@ -341,10 +343,13 @@ class RemehaHomeAPI:
     def onheartbeat(self):
         # Heartbeat function called periodically
         Domoticz.Log("Remeha Home plugin heartbeat")
+        current_time_minutes = time.localtime().tm_min
         result = self.resolve_external_data()
         access_token = result.get("access_token")
         self.update_devices(access_token)
-        self.getDailyEnergyConsumption(access_token)
+        # Check if the current time is a multiple of 5
+        if current_time_minutes % 5 == 0:
+            self.getDailyEnergyConsumption(access_token)
         self.cleanup()
 
     def oncommand(self, unit, command, level, hue):
