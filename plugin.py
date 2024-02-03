@@ -73,7 +73,7 @@ class RemehaHomeAPI:
         Domoticz.Device(Name="waterPressure", Unit=3, TypeName="Pressure", Used=1).Create()
         Domoticz.Device(Name="setPoint", Unit=4, TypeName="Setpoint", Used=1).Create()
         Domoticz.Device(Name="dhwTemperature", Unit=5, TypeName="Temperature", Used=1).Create()
-        Domoticz.Device(Name="EnergyConsumption", Unit=6, Type=243, TypeName="Kwh", Subtype=29 Used=1).Create()
+        Domoticz.Device(Name="EnergyConsumption", Unit=6, Type=243, TypeName="Kwh", Subtype=29, Used=1).Create()
 
     def resolve_external_data(self):
         # Logic for resolving external data (OAuth2 flow)
@@ -384,12 +384,12 @@ class RemehaHomeAPI:
         if result is None:
             return
         try:
-          access_token = result.get("access_token")
-          self.update_devices(access_token)
-          # Check if the current time in minutes 5 then get the daily energy consumption
-          # The api seems to be only updated once an hour so no use to run it more often.
-          if current_time_minutes == 5:
-            self.getDailyEnergyConsumption(access_token)
+            access_token = result.get("access_token")
+            self.update_devices(access_token)
+            # Check if the current time in minutes 5 then get the daily energy consumption
+            # The api seems to be only updated once an hour so no use to run it more often.
+            if current_time_minutes == 5:
+                self.getDailyEnergyConsumption(access_token)
         except Exception as e:
             Domoticz.Error(f"Error making POST request: {e}")
         self.cleanup()
