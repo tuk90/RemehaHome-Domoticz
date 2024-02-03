@@ -39,7 +39,7 @@ class RemehaHomeAPI:
         # Read options from Domoticz GUI
         self.readOptions()
         # Check if there are no existing devices
-        if len(Devices) != 6:
+        if len(Devices) != 7:
             # Example: Create devices for temperature, pressure, and setpoint
             self.createDevices()
         Domoticz.Heartbeat(5)
@@ -74,6 +74,7 @@ class RemehaHomeAPI:
         Domoticz.Device(Name="setPoint", Unit=4, TypeName="Setpoint", Used=1).Create()
         Domoticz.Device(Name="dhwTemperature", Unit=5, TypeName="Temperature", Used=1).Create()
         Domoticz.Device(Name="EnergyConsumption", Unit=6, Type=243, TypeName="Kwh", Subtype=29, Used=1).Create()
+        Domoticz.Device(Name="gasCalorificValue", Unit=7, Type=243, Subtype=31, Used=1).Create()
 
     def resolve_external_data(self):
         # Logic for resolving external data (OAuth2 flow)
@@ -244,6 +245,7 @@ class RemehaHomeAPI:
                 value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["cloudOutdoorTemperature"]
             value_water_pressure = response_json["appliances"][0]["waterPressure"]
             value_setpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
+            value_gascalorificvalue = response_json["appliances"][0]["gasCalorificValue"]
             
             # set globals
             if climate_zone_id is None:
@@ -267,6 +269,8 @@ class RemehaHomeAPI:
             #if str(Devices[5].sValue) != str(value_dhwTemperature):
             if value_dhwTemperature is not None:
                 Devices[5].Update(nValue=0, sValue=str(value_dhwTemperature))
+            #if str(Devices[7].sValue) != str(value_gascalorificvalue):
+            Devices[7].Update(nValue=0, sValue=str(value_gascalorificvalue))
 
         except Exception as e:
             Domoticz.Error(f"Error making GET request: {e}")
