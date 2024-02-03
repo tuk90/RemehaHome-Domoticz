@@ -21,6 +21,9 @@ import json
 import urllib
 import secrets
 import requests
+import datetime
+import calendar
+import time
 
 class RemehaHomeAPI:
     def __init__(self):
@@ -32,10 +35,11 @@ class RemehaHomeAPI:
     def onStart(self):
         # Called when the plugin is started
         Domoticz.Log("Remeha Home Plugin started.")
+        
         # Read options from Domoticz GUI
         self.readOptions()
         # Check if there are no existing devices
-        if len(Devices) != 5:
+        if len(Devices) != 6:
             # Example: Create devices for temperature, pressure, and setpoint
             self.createDevices()
         Domoticz.Heartbeat(5)
@@ -69,6 +73,7 @@ class RemehaHomeAPI:
         Domoticz.Device(Name="waterPressure", Unit=3, TypeName="Pressure", Used=1).Create()
         Domoticz.Device(Name="setPoint", Unit=4, TypeName="Setpoint", Used=1).Create()
         Domoticz.Device(Name="dhwTemperature", Unit=5, TypeName="Temperature", Used=1).Create()
+        Domoticz.Device(Name="EnergyConsumption", Unit=6, Type=243, TypeName="Kwh", Subtype=29, Used=1).Create()
 
     def resolve_external_data(self):
         # Logic for resolving external data (OAuth2 flow)
@@ -206,6 +211,13 @@ class RemehaHomeAPI:
             "Authorization": f"Bearer {access_token}",
             "Ocp-Apim-Subscription-Key": "df605c5470d846fc91e848b1cc653ddf",
         }
+        
+        global appliance_id
+        global climate_zone_id
+        
+        # Initialize global variables if not already set
+        appliance_id = globals().get('appliance_id', None)
+        climate_zone_id = globals().get('climate_zone_id', None)
 
         #Domoticz.Log("Getting device states...")
         try:
@@ -232,6 +244,13 @@ class RemehaHomeAPI:
                 value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["cloudOutdoorTemperature"]
             value_water_pressure = response_json["appliances"][0]["waterPressure"]
             value_setpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
+            
+            # set globals
+            if climate_zone_id is None:
+                climate_zone_id = response_json["appliances"][0]["climateZones"][0]["climateZoneId"]            
+            if appliance_id is None:
+                appliance_id = response_json["appliances"][0]["applianceId"]
+            
             try:
                 value_dhwTemperature = response_json["appliances"][0]["hotWaterZones"][0]["dhwTemperature"]
             except:
@@ -248,7 +267,6 @@ class RemehaHomeAPI:
             #if str(Devices[5].sValue) != str(value_dhwTemperature):
             if value_dhwTemperature is not None:
                 Devices[5].Update(nValue=0, sValue=str(value_dhwTemperature))
-            
 
         except Exception as e:
             Domoticz.Error(f"Error making GET request: {e}")
@@ -261,19 +279,6 @@ class RemehaHomeAPI:
         }
 
         try:
-            response = self._session.get(
-                'https://api.bdrthermea.net/Mobile/api/homes/dashboard',
-                headers=headers
-            )
-            response.raise_for_status()
-
-            response_json = response.json()
-            climate_zone_id = response_json["appliances"][0]["climateZones"][0]["climateZoneId"]
-
-        except Exception as e:
-            Domoticz.Error(f"Error making GET request: {e}")
-
-        try:
             json_data = {'roomTemperatureSetPoint': room_temperature_setpoint}
             response = self._session.post(
                 f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/temporary-override',
@@ -284,16 +289,107 @@ class RemehaHomeAPI:
             Domoticz.Log(f"Temperature set successfully to {room_temperature_setpoint}")
         except Exception as e:
             Domoticz.Error(f"Error making POST request: {e}")
+    
+    def getDailyEnergyConsumption(self, access_token):
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Ocp-Apim-Subscription-Key': 'df605c5470d846fc91e848b1cc653ddf'
+            }
+        Domoticz.Log("Daily energy consumption updated")
+
+        current_year = datetime.datetime.now().year
+
+        # Step 1: Get all results of the previous years until the last day of the previous year
+        last_day_of_last_year = datetime.datetime(current_year - 1, 12, 31)
+        yearly_url = f"https://api.bdrthermea.net/Mobile/api/appliances/{appliance_id}/energyconsumption/yearly?startDate=1900-01-01T00:00:00.000Z&endDate={last_day_of_last_year.strftime('%Y-%m-%dT00:00:00.000Z')}"
+        
+        try:
+            yearly_data = requests.get(yearly_url, headers=headers).json()
+            
+            # Extract "heatingEnergyConsumed" from each row in the yearly response body
+            heating_energy_consumed_values_yearly = [entry["heatingEnergyConsumed"] for entry in yearly_data["data"]]
+
+            # Calculate total heating energy consumed for yearly data
+            total_heating_energy_consumed_yearly = sum(heating_energy_consumed_values_yearly)
+        except Exception as e:
+            print(f"Error making GET request: {e}")
+
+        # Step 2: Get all results of the previous months excluding the current month
+        current_month = datetime.datetime.now().month
+
+        # Get the last day of the current month
+        last_day_of_current_month = calendar.monthrange(current_year, current_month)[1]
+
+        # Create a datetime object for the last day of the current month
+        end_of_current_month = datetime.datetime(current_year, current_month, last_day_of_current_month) 
+        
+        try:
+            monthly_url = f"https://api.bdrthermea.net/Mobile/api/appliances/{appliance_id}/energyconsumption/monthly?startDate={datetime.datetime.now().year}-01-01T00:00:00.000Z&endDate={end_of_current_month.strftime('%Y-%m-%dT00:00:00.000Z')}"
+            #print(monthly_url)
+            monthly_data = requests.get(monthly_url, headers=headers).json()
+      
+            # Extract "heatingEnergyConsumed" from each row in the monthly response body
+            heating_energy_consumed_values_monthly = [entry["heatingEnergyConsumed"] for entry in monthly_data["data"]]
+
+            # Calculate total heating energy consumed for monthly data
+            total_heating_energy_consumed_monthly = sum(heating_energy_consumed_values_monthly)
+        except Exception as e:
+            print(f"Error making GET request: {e}")
+
+         # Combine the totals
+        total_heating_energy_consumed = (
+        total_heating_energy_consumed_yearly +
+        total_heating_energy_consumed_monthly
+        ) 
+        
+        total_heating_energy_consumed = total_heating_energy_consumed * 1000
+        
+        # Get the start and end date for today
+        today_start = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = datetime.datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        # Format the start and end dates in the required format
+        today_string = today_start.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+        end_of_today_string = today_end.strftime('%Y-%m-%dT%H:%M:%S.999Z')
+            
+        try:
+            response = requests.get(
+                f'https://api.bdrthermea.net/Mobile/api/appliances/{appliance_id}/energyconsumption/daily?startDate={today_string}&endDate={end_of_today_string}',
+                headers=headers
+            )
+            response_json = response.json()
+            
+            EnergyToday = response_json["data"][0]["heatingEnergyConsumed"]
+            
+            EnergyToday = EnergyToday * 1000
+            
+            # Split the string based on the semicolon
+            split_values = (Devices[6].sValue).split(";")
+            # Check the value before the semicolon against another string
+            DomoticzCurrentConsume = split_values[0]
+            
+            if datetime.datetime.now().hour not in (0, 1, 2):         
+                #if str(DomoticzCurrentConsume) != str(EnergyToday):
+                Devices[6].Update(nValue=0, sValue=str(EnergyToday) + ";" + str(total_heating_energy_consumed))
+        except Exception as e:
+            print(f"Error making GET request: {e}")
+
 
     def onheartbeat(self):
         # Heartbeat function called periodically
         Domoticz.Heartbeat(self.poll_interval)
+        Domoticz.Log("Remeha Home plugin heartbeat")
+        current_time_minutes = time.localtime().tm_min
         result = self.resolve_external_data()
         if result is None:
             return
         try:
             access_token = result.get("access_token")
             self.update_devices(access_token)
+            # Check if the current time in minutes 5 then get the daily energy consumption
+            # The api seems to be only updated once an hour so no use to run it more often.
+            if current_time_minutes == 5:
+                self.getDailyEnergyConsumption(access_token)
         except Exception as e:
             Domoticz.Error(f"Error making POST request: {e}")
         self.cleanup()
