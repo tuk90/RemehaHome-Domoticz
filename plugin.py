@@ -197,10 +197,11 @@ class RemehaHomeAPI:
         }
         
         global appliance_id
-        appliance_id = None
-        
         global climate_zone_id
-        climate_zone_id = None
+        
+        # Initialize global variables if not already set
+        appliance_id = globals().get('appliance_id', None)
+        climate_zone_id = globals().get('climate_zone_id', None)
 
         try:
             response = self._session.get(
