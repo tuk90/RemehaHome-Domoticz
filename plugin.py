@@ -348,8 +348,9 @@ class RemehaHomeAPI:
         result = self.resolve_external_data()
         access_token = result.get("access_token")
         self.update_devices(access_token)
-        # Check if the current time is a multiple of 5
-        if current_time_minutes % 5 == 0:
+        # Check if the current time in minutes 5 then get the daily energy consumption
+        # The api seems to be only updated once an hour so no use to run it more often.
+        if current_time_minutes == 5:
             self.getDailyEnergyConsumption(access_token)
         self.cleanup()
 
