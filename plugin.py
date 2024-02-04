@@ -39,7 +39,7 @@ class RemehaHomeAPI:
         # Read options from Domoticz GUI
         self.readOptions()
         # Check if there are no existing devices
-        if len(Devices) != 7:
+        if len(Devices) != 8:
             # Example: Create devices for temperature, pressure, and setpoint
             self.createDevices()
         Domoticz.Heartbeat(5)
@@ -75,6 +75,7 @@ class RemehaHomeAPI:
         Domoticz.Device(Name="dhwTemperature", Unit=5, TypeName="Temperature", Used=1).Create()
         Domoticz.Device(Name="EnergyConsumption", Unit=6, Type=243, TypeName="Kwh", Subtype=29, Used=1).Create()
         Domoticz.Device(Name="gasCalorificValue", Unit=7, Type=243, Subtype=31, Used=1).Create()
+        Domoticz.Device(Name="zoneMode", Unit=8, TypeName="Selector Switch", Image=16, Options={"LevelNames":"Scheduling|Manual|TemporaryOverride|FrostProtection", "LevelOffHidden": "false", "SelectorStyle": "1"}, Used=1).Create()
 
     def resolve_external_data(self):
         # Logic for resolving external data (OAuth2 flow)
@@ -403,15 +404,15 @@ class RemehaHomeAPI:
         if unit == 4:  # setpoint device
             if command == 'Set Level':
                 room_temperature_setpoint = float(level)
-        result = self.resolve_external_data()
-        if result is None:
-            return
-        try:
-            access_token = result.get("access_token")
-            self.set_temperature(access_token, room_temperature_setpoint)
-        except Exception as e:
-            Domoticz.Error(f"Error making POST request: {e}")
-        self.cleanup()
+            result = self.resolve_external_data()
+            if result is None:
+                return
+            try:
+                access_token = result.get("access_token")
+                self.set_temperature(access_token, room_temperature_setpoint)
+            except Exception as e:
+                Domoticz.Error(f"Error making POST request: {e}")
+            self.cleanup()
 
 # Create an instance of the RemehaHomeAPI class
 _plugin = RemehaHomeAPI()
