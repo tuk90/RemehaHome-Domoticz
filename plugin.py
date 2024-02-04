@@ -75,7 +75,7 @@ class RemehaHomeAPI:
         Domoticz.Device(Name="dhwTemperature", Unit=5, TypeName="Temperature", Used=1).Create()
         Domoticz.Device(Name="EnergyConsumption", Unit=6, Type=243, TypeName="Kwh", Subtype=29, Used=1).Create()
         Domoticz.Device(Name="gasCalorificValue", Unit=7, Type=243, Subtype=31, Used=1).Create()
-        Domoticz.Device(Name="zoneMode", Unit=8, TypeName="Selector Switch", Image=16, Options={"LevelNames":"Scheduling|Manual|TemporaryOverride|FrostProtection", "LevelOffHidden": "false", "SelectorStyle": "1"}, Used=1).Create()
+        Domoticz.Device(Name="zoneMode", Unit=8, TypeName="Selector Switch", Image=15, Options={"LevelNames":"Scheduling|Manual|TemporaryOverride|FrostProtection", "LevelOffHidden": "false", "SelectorStyle": "1"}, Used=1).Create()
 
     def resolve_external_data(self):
         # Logic for resolving external data (OAuth2 flow)
@@ -247,6 +247,7 @@ class RemehaHomeAPI:
             value_water_pressure = response_json["appliances"][0]["waterPressure"]
             value_setpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
             value_gascalorificvalue = response_json["appliances"][0]["gasCalorificValue"]
+            value_zoneMode = response_json["appliances"][0]["climateZones"][0]["zoneMode"]
             
             # set globals
             if climate_zone_id is None:
@@ -272,6 +273,16 @@ class RemehaHomeAPI:
                 Devices[5].Update(nValue=0, sValue=str(value_dhwTemperature))
             #if str(Devices[7].sValue) != str(value_gascalorificvalue):
             Devices[7].Update(nValue=0, sValue=str(value_gascalorificvalue))
+            #if str(Devices[8].sValue) != str(value_zoneMode):
+            if value_zoneMode == "Scheduling":
+                Devices[8].Update(nValue=1, sValue="0")
+            elif value_zoneMode == "Manual":
+                Devices[8].Update(nValue=10, sValue="10")
+            elif value_zoneMode == "TemporaryOverride":
+                Devices[8].Update(nValue=20, sValue="20")
+            elif value_zoneMode == "FrostProtection":
+                Devices[8].Update(nValue=0, sValue="30")
+        
 
         except Exception as e:
             Domoticz.Error(f"Error making GET request: {e}")
