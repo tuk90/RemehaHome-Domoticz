@@ -23,6 +23,9 @@ The plugin creates the following devices in Domoticz:
 3. Water Pressure
 4. Setpoint
 5. Domestic Hot Water Temperature
+6. Energy Consumption
+7. gasCalorificValue
+8. zoneMode (read only, will be adjustable in the near future)
 
 ## Usage
 The plugin fetches data from the Remeha Home API and updates the corresponding Domoticz devices. Additionally, you can set the room temperature setpoint using the "Setpoint" device.
