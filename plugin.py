@@ -272,7 +272,7 @@ class RemehaHomeAPI:
             if value_dhwTemperature is not None:
                 Devices[5].Update(nValue=0, sValue=str(value_dhwTemperature))
             #if str(Devices[7].sValue) != str(value_gascalorificvalue):
-            Devices[7].Update(nValue=0, sValue=str(value_gascalorificvalue))
+            Devices[7].Update(nValue=0, sValue=str(value_gascalorificvalue), Options={"Custom": "1;kWh/m³"})
             #if str(Devices[8].sValue) != str(value_zoneMode):
             if value_zoneMode == "Scheduling":
                 Devices[8].Update(nValue=1, sValue="0")
