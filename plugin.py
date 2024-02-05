@@ -39,7 +39,7 @@ class RemehaHomeAPI:
         # Read options from Domoticz GUI
         self.readOptions()
         # Check if there are no existing devices
-        if len(Devices) != 8:
+        if len(Devices) != 9:
             # Example: Create devices for temperature, pressure, and setpoint
             self.createDevices()
         Domoticz.Heartbeat(5)
@@ -76,6 +76,9 @@ class RemehaHomeAPI:
         Domoticz.Device(Name="EnergyConsumption", Unit=6, Type=243, TypeName="Kwh", Subtype=29, Used=1).Create()
         Domoticz.Device(Name="gasCalorificValue", Unit=7, Type=243, Subtype=31, Used=1).Create()
         Domoticz.Device(Name="zoneMode", Unit=8, TypeName="Selector Switch", Image=15, Options={"LevelNames":"Scheduling|Manual|TemporaryOverride|FrostProtection", "LevelOffHidden": "false", "SelectorStyle": "1"}, Used=1).Create()
+        Domoticz.Device(Name="waterPressureToLow", Unit=9, TypeName="Switch", Switchtype=0, Image=13, Used=1).Create()
+
+
 
     def resolve_external_data(self):
         # Logic for resolving external data (OAuth2 flow)
@@ -248,6 +251,7 @@ class RemehaHomeAPI:
             value_setpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
             value_gascalorificvalue = response_json["appliances"][0]["gasCalorificValue"]
             value_zoneMode = response_json["appliances"][0]["climateZones"][0]["zoneMode"]
+            value_waterPressureOK = response_json["appliances"][0]["waterPressureOK"]
             
             # set globals
             if climate_zone_id is None:
@@ -282,6 +286,11 @@ class RemehaHomeAPI:
                 Devices[8].Update(nValue=20, sValue="20")
             elif value_zoneMode == "FrostProtection":
                 Devices[8].Update(nValue=0, sValue="30")
+            #if str(Devices[9].sValue) != str(value_gascalorificvalue):
+            if value_waterPressureOK == True:
+                Devices[9].Update(nValue=0, sValue="Off")
+            else:
+                Devices[9].Update(nValue=1, sValue="On")
         
 
         except Exception as e:
