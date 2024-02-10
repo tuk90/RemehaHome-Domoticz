@@ -400,39 +400,92 @@ class RemehaHomeAPI:
             print(f"Error making GET request: {e}")
 
 
+    def check_token_validity(self,acces_token):
+        try:
+            # Extracting the payload part of the token
+            payload = acces_token.split('.')[1]
+            # Decoding the payload from base64
+            decoded_payload = base64.b64decode(payload + '===').decode('utf-8')
+            # Converting the decoded payload to a dictionary
+            payload_dict = eval(decoded_payload)
+        
+            # Extracting the expiration timestamp
+            expiration_timestamp = payload_dict.get('exp')
+            if expiration_timestamp:
+                #added 5 seconds to be certain that if the token expires in a few seconds a new one is fetched
+                current_timestamp = datetime.datetime.now().timestamp() + 5
+                if current_timestamp < expiration_timestamp:
+                    return "valid"
+                else:
+                    Domoticz.Log("Token check: Token is invalid, getting new token.....")
+                    return "invalid"
+            else:
+                Domoticz.Log("Token check: Token is invalid, getting new token.....")
+                return "invalid"  # If expiration timestamp is not present, consider it invalid
+        except Exception as e:
+            print("Error:", e)
+        return "invalid"
+    
     def onheartbeat(self):
         # Heartbeat function called periodically
         Domoticz.Heartbeat(self.poll_interval)
         Domoticz.Log("Remeha Home plugin heartbeat")
         current_time_minutes = time.localtime().tm_min
-        result = self.resolve_external_data()
-        if result is None:
-            return
-        try:
-            access_token = result.get("access_token")
-            self.update_devices(access_token)
-            # Check if the current time in minutes 5 then get the daily energy consumption
-            # The api seems to be only updated once an hour so no use to run it more often.
-            if current_time_minutes == 5:
-                self.getDailyEnergyConsumption(access_token)
-        except Exception as e:
-            Domoticz.Error(f"Error making POST request: {e}")
+        
+        # Check if the access token exists in the instance variable self and if it's valid
+        access_token = getattr(self, 'access_token', None)
+        if access_token and self.check_token_validity(access_token) == "valid":
+            try:
+                self.update_devices(access_token)
+                # Check if the current time in minutes is 5, then get the daily energy consumption
+                # The API seems to be only updated once an hour so no use to run it more often.
+                if current_time_minutes == 5:
+                    self.getDailyEnergyConsumption(access_token)
+            except Exception as e:
+                Domoticz.Error(f"Error making POST request: {e}")
+        else:
+            # Access token is expired or doesn't exist in the session, get a new one
+            result = self.resolve_external_data()
+            if result is not None:
+                try:
+                    access_token = result.get("access_token")
+                    # Save the access token to the session
+                    self.access_token = access_token
+                    self.update_devices(access_token)
+                    # Check if the current time in minutes is 5, then get the daily energy consumption
+                    # The API seems to be only updated once an hour so no use to run it more often.
+                    if current_time_minutes == 5:
+                        self.getDailyEnergyConsumption(access_token)
+                except Exception as e:
+                    Domoticz.Error(f"Error making POST request: {e}")
         self.cleanup()
 
     def oncommand(self, unit, command, level, hue):
         # Command handling function
-        if unit == 4:  # setpoint device
-            if command == 'Set Level':
-                room_temperature_setpoint = float(level)
-            result = self.resolve_external_data()
-            if result is None:
-                return
+        access_token = getattr(self, 'access_token', None)
+        if access_token and self.check_token_validity(access_token) == "valid":
             try:
-                access_token = result.get("access_token")
-                self.set_temperature(access_token, room_temperature_setpoint)
+                if unit == 4:  # setpoint device
+                    if command == 'Set Level':
+                        room_temperature_setpoint = float(level)
+                        self.set_temperature(access_token, room_temperature_setpoint)
             except Exception as e:
                 Domoticz.Error(f"Error making POST request: {e}")
-            self.cleanup()
+        else:
+             # Access token is expired or doesn't exist in the session, get a new one
+            result = self.resolve_external_data()
+            if result is not None:
+                try:
+                    access_token = result.get("access_token")
+                    # Save the access token to the session
+                    self.access_token = access_token
+                    if unit == 4:  # setpoint device
+                        if command == 'Set Level':
+                            room_temperature_setpoint = float(level)
+                            self.set_temperature(access_token, room_temperature_setpoint)
+                except Exception as e:
+                    Domoticz.Error(f"Error making POST request: {e}")
+        self.cleanup()
 
 # Create an instance of the RemehaHomeAPI class
 _plugin = RemehaHomeAPI()
