@@ -412,7 +412,8 @@ class RemehaHomeAPI:
             # Extracting the expiration timestamp
             expiration_timestamp = payload_dict.get('exp')
             if expiration_timestamp:
-                current_timestamp = datetime.datetime.now().timestamp()
+                #added 5 seconds to be certain that if the token expires in a few seconds a new one is fetched
+                current_timestamp = datetime.datetime.now().timestamp() + 5
                 if current_timestamp < expiration_timestamp:
                     return "valid"
                 else:
