@@ -419,6 +419,7 @@ class RemehaHomeAPI:
                     Domoticz.Log("Token check: Token is invalid, getting new token.....")
                     return "invalid"
             else:
+                Domoticz.Log("Token check: Token is invalid, getting new token.....")
                 return "invalid"  # If expiration timestamp is not present, consider it invalid
         except Exception as e:
             print("Error:", e)
@@ -460,21 +461,30 @@ class RemehaHomeAPI:
 
     def oncommand(self, unit, command, level, hue):
         # Command handling function
-        
-        
-        
-        if unit == 4:  # setpoint device
-            if command == 'Set Level':
-                room_temperature_setpoint = float(level)
-            result = self.resolve_external_data()
-            if result is None:
-                return
+        access_token = getattr(self, 'access_token', None)
+        if access_token and self.check_token_validity(access_token) == "valid":
             try:
-                access_token = result.get("access_token")
-                self.set_temperature(access_token, room_temperature_setpoint)
+                if unit == 4:  # setpoint device
+                    if command == 'Set Level':
+                        room_temperature_setpoint = float(level)
+                        self.set_temperature(access_token, room_temperature_setpoint)
             except Exception as e:
                 Domoticz.Error(f"Error making POST request: {e}")
-            self.cleanup()
+        else:
+             # Access token is expired or doesn't exist in the session, get a new one
+            result = self.resolve_external_data()
+            if result is not None:
+                try:
+                    access_token = result.get("access_token")
+                    # Save the access token to the session
+                    self.access_token = access_token
+                    if unit == 4:  # setpoint device
+                        if command == 'Set Level':
+                            room_temperature_setpoint = float(level)
+                            self.set_temperature(access_token, room_temperature_setpoint)
+                except Exception as e:
+                    Domoticz.Error(f"Error making POST request: {e}")
+        self.cleanup()
 
 # Create an instance of the RemehaHomeAPI class
 _plugin = RemehaHomeAPI()
