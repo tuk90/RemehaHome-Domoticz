@@ -1,5 +1,5 @@
 """
-<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring/GizMoCuz" version="1.0.2">
+<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring/GizMoCuz" version="1.2.0">
     <params>
         <param field="Mode1" label="Email" width="200px" required="true"/>
         <param field="Mode2" label="Password" width="200px" password="true" required="true"/>
@@ -305,11 +305,18 @@ class RemehaHomeAPI:
 
         try:
             json_data = {'roomTemperatureSetPoint': room_temperature_setpoint}
-            response = self._session.post(
-                f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/temporary-override',
-                headers=headers,
-                json=json_data
-            )
+            if Devices[8].sValue == "10": #If zonemode is manual then adjust the manual temp
+                response = self._session.post(
+                    f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/manual',
+                    headers=headers,
+                    json=json_data
+                    )
+            else: # zonemode is not manual then temporary override
+                response = self._session.post(
+                    f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/temporary-override',
+                    headers=headers,
+                    json=json_data
+                    )
             response.raise_for_status()
             Domoticz.Log(f"Temperature set successfully to {room_temperature_setpoint}")
         except Exception as e:
@@ -426,6 +433,53 @@ class RemehaHomeAPI:
             print("Error:", e)
         return "invalid"
     
+    def zonemode(self, access_token, level):
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Ocp-Apim-Subscription-Key': 'df605c5470d846fc91e848b1cc653ddf'
+            }
+        try:
+            if level == 0: # Scheduling mode
+                json_data = {"heatingProgramId": 1}
+                response = requests.post(
+                    f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/schedule',
+                    headers=headers,
+                    json=json_data
+                    )
+                response.raise_for_status()
+                Domoticz.Log("Zonemode succesfully set to Scheduling")
+            elif level == 10: # Manual mode
+                room_temperature_setpoint = float(Devices[4].sValue)
+                json_data = {"roomTemperatureSetPoint": room_temperature_setpoint}
+                response = requests.post(
+                    f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/manual',
+                    headers=headers,
+                    json=json_data
+                    )
+                response.raise_for_status()
+                Domoticz.Log("Zonemode succesfully set to Manual")
+            elif level == 20: # TemporaryOverride mode
+                room_temperature_setpoint = float(Devices[4].sValue)
+                json_data = {'roomTemperatureSetPoint': room_temperature_setpoint}
+                response = self._session.post(
+                    f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/temporary-override',
+                    headers=headers,
+                    json=json_data
+                    )
+                response.raise_for_status()
+                Domoticz.Log("Zonemode succesfully set to TemporaryOverride")
+            elif level == 30: # FrostProtection mode
+                response = self._session.post(
+                    f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/anti-frost',
+                    headers=headers
+                    )   
+                response.raise_for_status()
+                Domoticz.Log("Zonemode succesfully set to FrostProtection")
+                
+        except Exception as e:
+                print("Error:", e)
+                return "invalid"
+    
     def onheartbeat(self):
         # Heartbeat function called periodically
         Domoticz.Heartbeat(self.poll_interval)
@@ -469,6 +523,8 @@ class RemehaHomeAPI:
                     if command == 'Set Level':
                         room_temperature_setpoint = float(level)
                         self.set_temperature(access_token, room_temperature_setpoint)
+                elif unit == 8: # zonemode device
+                    self.zonemode(access_token, level)
             except Exception as e:
                 Domoticz.Error(f"Error making POST request: {e}")
         else:
