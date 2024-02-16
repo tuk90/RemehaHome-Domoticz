@@ -1,5 +1,5 @@
 """
-<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring/GizMoCuz" version="1.1.0">
+<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring/GizMoCuz" version="1.2.0">
     <params>
         <param field="Mode1" label="Email" width="200px" required="true"/>
         <param field="Mode2" label="Password" width="200px" password="true" required="true"/>
@@ -305,11 +305,18 @@ class RemehaHomeAPI:
 
         try:
             json_data = {'roomTemperatureSetPoint': room_temperature_setpoint}
-            response = self._session.post(
-                f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/temporary-override',
-                headers=headers,
-                json=json_data
-            )
+            if Devices[8].sValue == "10": #If zonemode is manual then adjust the manual temp
+                response = self._session.post(
+                    f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/manual',
+                    headers=headers,
+                    json=json_data
+                    )
+            else: # zonemode is not manual then temporary override
+                response = self._session.post(
+                    f'https://api.bdrthermea.net/Mobile/api/climate-zones/{climate_zone_id}/modes/temporary-override',
+                    headers=headers,
+                    json=json_data
+                    )
             response.raise_for_status()
             Domoticz.Log(f"Temperature set successfully to {room_temperature_setpoint}")
         except Exception as e:

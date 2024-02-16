@@ -25,11 +25,11 @@ The plugin creates the following devices in Domoticz:
 5. Domestic Hot Water Temperature
 6. Energy Consumption
 7. gasCalorificValue
-8. zoneMode (read only, will be adjustable in the near future)
+8. zoneMode
 9. waterPressureToLow (alarm)
 
 ## Usage
-The plugin fetches data from the Remeha Home API and updates the corresponding Domoticz devices. Additionally, you can set the room temperature setpoint using the "Setpoint" device.
+The plugin fetches data from the Remeha Home API and updates the corresponding Domoticz devices. The room temperature can be set using the "Setpoint" device, it will set the zoneMode to TemporaryOverride except when the zoneMode is set to Manual. The zoneMode can be used to set the zoneMode to the following modes: Scheduling, Manual, TemporaryOverride, FrostProtection
 
 ## Support
 For any issues or questions, please open an issue on the [GitHub repository](https://github.com/tuk90/RemehaHome-Domoticz).
