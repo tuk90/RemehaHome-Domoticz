@@ -1,5 +1,5 @@
 """
-<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring/GizMoCuz" version="1.2.0">
+<plugin key="RemehaHome" name="Remeha Home Plugin" author="Nick Baring/GizMoCuz" version="1.3.0">
     <params>
         <param field="Mode1" label="Email" width="200px" required="true"/>
         <param field="Mode2" label="Password" width="200px" password="true" required="true"/>
@@ -39,7 +39,7 @@ class RemehaHomeAPI:
         # Read options from Domoticz GUI
         self.readOptions()
         # Check if there are no existing devices
-        if len(Devices) != 9:
+        if len(Devices) != 10:
             # Example: Create devices for temperature, pressure, and setpoint
             self.createDevices()
         Domoticz.Heartbeat(5)
@@ -77,6 +77,7 @@ class RemehaHomeAPI:
         Domoticz.Device(Name="gasCalorificValue", Unit=7, Type=243, Subtype=31, Used=1).Create()
         Domoticz.Device(Name="zoneMode", Unit=8, TypeName="Selector Switch", Image=15, Options={"LevelNames":"Scheduling|Manual|TemporaryOverride|FrostProtection", "LevelOffHidden": "false", "SelectorStyle": "1"}, Used=1).Create()
         Domoticz.Device(Name="waterPressureToLow", Unit=9, TypeName="Switch", Switchtype=0, Image=13, Used=1).Create()
+        Domoticz.Device(Name="EnergyDelivered", Unit=10, Type=243, TypeName="Kwh", Subtype=29, Switchtype=4, Used=1).Create()
 
 
 
@@ -340,9 +341,13 @@ class RemehaHomeAPI:
             
             # Extract "heatingEnergyConsumed" from each row in the yearly response body
             heating_energy_consumed_values_yearly = [entry["heatingEnergyConsumed"] for entry in yearly_data["data"]]
+            # Energy generated
+            heating_energy_delivered_values_yearly = [entry["heatingEnergyDelivered"] for entry in yearly_data["data"]]
 
             # Calculate total heating energy consumed for yearly data
             total_heating_energy_consumed_yearly = sum(heating_energy_consumed_values_yearly)
+            # Energy generated
+            total_heating_energy_delivered_yearly = sum(heating_energy_delivered_values_yearly)
         except Exception as e:
             print(f"Error making GET request: {e}")
 
@@ -362,19 +367,30 @@ class RemehaHomeAPI:
       
             # Extract "heatingEnergyConsumed" from each row in the monthly response body
             heating_energy_consumed_values_monthly = [entry["heatingEnergyConsumed"] for entry in monthly_data["data"]]
+            # Energy generated
+            heating_energy_delivered_values_monthly = [entry["heatingEnergyDelivered"] for entry in monthly_data["data"]]
 
             # Calculate total heating energy consumed for monthly data
             total_heating_energy_consumed_monthly = sum(heating_energy_consumed_values_monthly)
+            # Energy delivered
+            total_heating_energy_delivered_monthly = sum(heating_energy_delivered_values_monthly)
         except Exception as e:
             print(f"Error making GET request: {e}")
 
-         # Combine the totals
+         # Combine the totals consumed
         total_heating_energy_consumed = (
         total_heating_energy_consumed_yearly +
         total_heating_energy_consumed_monthly
         ) 
+        # Generated
+        total_heating_energy_delivered = (
+        total_heating_energy_delivered_yearly +
+        total_heating_energy_delivered_monthly
+        ) 
         
         total_heating_energy_consumed = total_heating_energy_consumed * 1000
+        total_heating_energy_delivered = total_heating_energy_delivered * 1000
+        
         
         # Get the start and end date for today
         today_start = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -393,7 +409,10 @@ class RemehaHomeAPI:
             
             EnergyToday = response_json["data"][0]["heatingEnergyConsumed"]
             
+            EnergyDeliveredToday = response_json["data"][0]["heatingEnergyDelivered"]
+            
             EnergyToday = EnergyToday * 1000
+            EnergyDeliveredToday = EnergyDeliveredToday * 1000
             
             # Split the string based on the semicolon
             split_values = (Devices[6].sValue).split(";")
@@ -403,6 +422,7 @@ class RemehaHomeAPI:
             if datetime.datetime.now().hour not in (0, 1, 2):         
                 #if str(DomoticzCurrentConsume) != str(EnergyToday):
                 Devices[6].Update(nValue=0, sValue=str(EnergyToday) + ";" + str(total_heating_energy_consumed))
+                Devices[10].Update(nValue=0, sValue=str(EnergyDeliveredToday) + ";" + str(total_heating_energy_delivered))
         except Exception as e:
             print(f"Error making GET request: {e}")
 
