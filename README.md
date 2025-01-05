@@ -14,7 +14,7 @@ This plugin is based on the Remeha Home Python library by Michiel Visser, availa
 ## Plugin Parameters
 - **Email:** Your Remeha Home account email.
 - **Password:** Your Remeha Home account password.
-- **Poll Interval:** Poll Interval (default 30 seconds).
+- **Poll Interval:** Poll Interval (default 30 seconds). If you choose an amount higher than 30 seconds then set the value of Data Timeout to a higher value to prevent your logs from being flooded with 'timeout' error messages.
 
 ## Devices
 The plugin creates the following devices in Domoticz:
