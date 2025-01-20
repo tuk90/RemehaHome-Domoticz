@@ -254,7 +254,7 @@ class RemehaHomeAPI:
             value_gascalorificvalue = response_json["appliances"][0]["gasCalorificValue"]
             value_zoneMode = response_json["appliances"][0]["climateZones"][0]["zoneMode"]
             value_waterPressureOK = response_json["appliances"][0]["waterPressureOK"]
-            value_status = response_json["appliances"][0]["activeThermalMode"]
+            value_status = response_json["appliances"][0]["climateZones"][0]["activeComfortDemand"]
             
             # set globals
             if climate_zone_id is None:
