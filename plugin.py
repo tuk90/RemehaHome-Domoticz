@@ -39,7 +39,7 @@ class RemehaHomeAPI:
         # Read options from Domoticz GUI
         self.readOptions()
         # Check if there are no existing devices
-        if len(Devices) != 10:
+        if len(Devices) != 11:
             # Example: Create devices for temperature, pressure, and setpoint
             self.createDevices()
         Domoticz.Heartbeat(5)
@@ -78,6 +78,7 @@ class RemehaHomeAPI:
         Domoticz.Device(Name="zoneMode", Unit=8, TypeName="Selector Switch", Image=15, Options={"LevelNames":"Scheduling|Manual|TemporaryOverride|FrostProtection", "LevelOffHidden": "false", "SelectorStyle": "1"}, Used=1).Create()
         Domoticz.Device(Name="waterPressureToLow", Unit=9, TypeName="Switch", Switchtype=0, Image=13, Used=1).Create()
         Domoticz.Device(Name="EnergyDelivered", Unit=10, Type=243, TypeName="Kwh", Subtype=29, Switchtype=4, Used=1).Create()
+        Domoticz.Device(Name="Status", Unit=11, Type=243, Subtype=31, Image=15, Used=1).Create()
 
 
 
@@ -253,6 +254,7 @@ class RemehaHomeAPI:
             value_gascalorificvalue = response_json["appliances"][0]["gasCalorificValue"]
             value_zoneMode = response_json["appliances"][0]["climateZones"][0]["zoneMode"]
             value_waterPressureOK = response_json["appliances"][0]["waterPressureOK"]
+            value_status = response_json["appliances"][0]["activeThermalMode"]
             
             # set globals
             if climate_zone_id is None:
@@ -292,6 +294,7 @@ class RemehaHomeAPI:
                 Devices[9].Update(nValue=0, sValue="Off")
             else:
                 Devices[9].Update(nValue=1, sValue="On")
+            Devices[11].Update(nValue=0, sValue=str(value_status))
         
 
         except Exception as e:
