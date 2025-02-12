@@ -245,10 +245,15 @@ class RemehaHomeAPI:
             
             # Update Domoticz devices here based on the response_json
             value_room_temperature = response_json["appliances"][0]["climateZones"][0]["roomTemperature"]
-            value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperature"]
-            if value_outdoor_temperature is None:
-                # No real outdoor temperature device, using cloud value
-                value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["cloudOutdoorTemperature"]
+            if response_json["appliances"][0]["capabilityOutdoorTemperature"] is True:
+                if response_json["appliances"][0]["capabilityUtilizeOutdoorTemperature"] is True:
+                    value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["applianceOutdoorTemperature"]
+                    #Domoticz.Error(f"Device outdoor temp expected: {value_outdoor_temperature}")
+
+                if response_json["appliances"][0]["capabilityInternetOutdoorTemperatureExpected"] is True:
+                    value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["internetOutdoorTemperature"]
+                    #Domoticz.Error(f"Internet temp expected : {value_outdoor_temperature}")
+
             value_water_pressure = response_json["appliances"][0]["waterPressure"]
             value_setpoint = response_json["appliances"][0]["climateZones"][0]["setPoint"]
             value_gascalorificvalue = response_json["appliances"][0]["gasCalorificValue"]
@@ -270,7 +275,8 @@ class RemehaHomeAPI:
             #if str(Devices[1].sValue) != str(value_room_temperature):
             Devices[1].Update(nValue=0, sValue=str(value_room_temperature))
             #if str(Devices[2].sValue) != str(value_outdoor_temperature):
-            Devices[2].Update(nValue=0, sValue=str(value_outdoor_temperature))
+            if response_json["appliances"][0]["capabilityOutdoorTemperature"] is True:
+                Devices[2].Update(nValue=0, sValue=str(value_outdoor_temperature))
             #if str(Devices[3].sValue) != str(value_water_pressure):
             Devices[3].Update(nValue=0, sValue=str(value_water_pressure))
             #if str(Devices[4].sValue) != str(value_setpoint):
