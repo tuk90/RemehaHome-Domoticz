@@ -246,12 +246,11 @@ class RemehaHomeAPI:
             # Update Domoticz devices here based on the response_json
             value_room_temperature = response_json["appliances"][0]["climateZones"][0]["roomTemperature"]
             if response_json["appliances"][0]["capabilityOutdoorTemperature"] is True:
-                if response_json["appliances"][0]["capabilityUtilizeOutdoorTemperature"] is True:
+                if response_json["appliances"][0]["outdoorTemperatureInformation"]["outdoorTemperatureSource"] == 'Wired':
                     value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["applianceOutdoorTemperature"]
-                    #Domoticz.Error(f"Device outdoor temp expected: {value_outdoor_temperature}")
-
-                if response_json["appliances"][0]["capabilityInternetOutdoorTemperatureExpected"] is True:
-                    value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["internetOutdoorTemperature"]
+                    #Domoticz.Error(f"Device outdoor temp expected: {value_outdoor_temperature}")  
+                else :
+                    value_outdoor_temperature = response_json["appliances"][0]["outdoorTemperatureInformation"]["cloudOutdoorTemperature"]
                     #Domoticz.Error(f"Internet temp expected : {value_outdoor_temperature}")
 
             value_water_pressure = response_json["appliances"][0]["waterPressure"]
