@@ -29,6 +29,7 @@ The plugin creates the following devices in Domoticz:
 9. zoneMode
 10. waterPressureToLow (alarm)
 11. Status
+12. seasonalEfficiency (only for air heatpumps)
 
 ## Usage
 The plugin fetches data from the Remeha Home API and updates the corresponding Domoticz devices. The room temperature can be set using the "Setpoint" device, it will set the zoneMode to TemporaryOverride except when the zoneMode is set to Manual. The zoneMode can be used to set the zoneMode to the following modes: Scheduling, Manual, TemporaryOverride, FrostProtection
