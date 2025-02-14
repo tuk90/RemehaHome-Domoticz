@@ -39,7 +39,7 @@ class RemehaHomeAPI:
         # Read options from Domoticz GUI
         self.readOptions()
         # Check if there are no existing devices
-        if len(Devices) != 11:
+        if len(Devices) != 12:
             # Example: Create devices for temperature, pressure, and setpoint
             self.createDevices()
         Domoticz.Heartbeat(5)
@@ -79,6 +79,7 @@ class RemehaHomeAPI:
         Domoticz.Device(Name="waterPressureToLow", Unit=9, TypeName="Switch", Switchtype=0, Image=13, Used=1).Create()
         Domoticz.Device(Name="EnergyDelivered", Unit=10, Type=243, TypeName="Kwh", Subtype=29, Switchtype=4, Used=1).Create()
         Domoticz.Device(Name="Status", Unit=11, TypeName="Text", Image=15, Used=1).Create()
+        Domoticz.Device(Name="seasonalEfficiency", Unit=12, Type=243, Subtype=31, Used=1).Create()
 
 
 
@@ -419,6 +420,15 @@ class RemehaHomeAPI:
             
             EnergyDeliveredToday = response_json["data"][0]["heatingEnergyDelivered"]
             
+            # Initialize the variable to 1, default value if producerType is not "HeatPumpAirSource"
+            value_seasonalEfficiency = 1         
+            
+            # Iterate over the producers to find the matching producerType
+            for producer in response_json['data'][0]['producerPerformanceStatistics']['producers']:
+                if producer['producerType'] == "HeatPumpAirSource":
+                    value_seasonalEfficiency = producer['seasonalEfficiency']
+                    break  # Exit loop once the producer is found
+            
             EnergyToday = EnergyToday * 1000
             EnergyDeliveredToday = EnergyDeliveredToday * 1000
             
@@ -431,6 +441,7 @@ class RemehaHomeAPI:
                 #if str(DomoticzCurrentConsume) != str(EnergyToday):
                 Devices[6].Update(nValue=0, sValue=str(EnergyToday) + ";" + str(total_heating_energy_consumed))
                 Devices[10].Update(nValue=0, sValue=str(EnergyDeliveredToday) + ";" + str(total_heating_energy_delivered))
+                Devices[12].Update(nValue=0, sValue=str(value_seasonalEfficiency), Options={"Custom": "1;SCOP"})
         except Exception as e:
             print(f"Error making GET request: {e}")
 
